@@ -18,6 +18,8 @@ DEFAULT_HEIGHT = 1920
 DEFAULT_FPS = 30
 DEFAULT_DURATION = 1
 DEFAULT_ZOOM = 0.8
+DEFAULT_VERTICAL = 0.35
+DEFAULT_HORIZONTAL = 0.35
 
 
 def sort_images(folder):
@@ -46,11 +48,12 @@ def sort_images(folder):
     return [f for _, f in entries]
 
 class FaceAligner:
-    def __init__(self, target_w, target_h, zoom=0.8, eye_distance=(0.35, 0.35)):
+    def __init__(self, target_w, target_h, zoom, vertical, horizontal):
         self.target_w = target_w
         self.target_h = target_h
         self.zoom = zoom
-        self.eye_distance = eye_distance
+        self.vertical = vertical
+        self.horizontal = horizontal
 
         # mediapipe setup
         self.mp_face_mesh = mp.solutions.face_mesh
@@ -90,8 +93,8 @@ class FaceAligner:
         dy = ry - ly
         angle = math.degrees(math.atan2(dy, dx))
         # desired distance between eyes in output (as pixels)
-        desired_left_x = self.eye_distance[0] * self.target_w
-        desired_right_x = (1 - self.eye_distance[0]) * self.target_w
+        desired_left_x = self.horizontal * self.target_w
+        desired_right_x = (1 - self.horizontal) * self.target_w
         desired_dist = desired_right_x - desired_left_x
         current_dist = math.hypot(dx, dy)
         scale = self.zoom * (desired_dist / current_dist)
@@ -102,7 +105,7 @@ class FaceAligner:
         M = cv2.getRotationMatrix2D(eyes_center, angle, scale)
         # translate so eyes_center maps to desired center in output
         tx = self.target_w * 0.5 - eyes_center[0]
-        ty = self.target_h * self.eye_distance[1] - eyes_center[1]
+        ty = self.target_h * self.vertical - eyes_center[1]
         # incorporate translation into M
         M[0,2] += tx
         M[1,2] += ty
@@ -110,8 +113,8 @@ class FaceAligner:
         aligned = cv2.warpAffine(img, M, (self.target_w, self.target_h))
         return aligned
 
-def make_video(images, out_path, width, height, fps, duration, zoom=0.8):
-    aligner = FaceAligner(width, height, zoom)
+def make_video(images, out_path, width, height, fps, duration, zoom, face_y, face_x):
+    aligner = FaceAligner(width, height, zoom, face_y, face_x)
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     writer = cv2.VideoWriter(out_path, fourcc, fps, (width, height))
     total_frames = duration * len(images)
@@ -145,7 +148,9 @@ def parse_args():
     p.add_argument('--height', type=int, default=DEFAULT_HEIGHT, help='Output video height (default 1920)')
     p.add_argument('--fps', type=int, default=DEFAULT_FPS, help='Frames per second (default 30)')
     p.add_argument('--duration', type=int, default=DEFAULT_DURATION, help='The number of frames per image (default 1)')
-    p.add_argument('--zoom', type=float, default=DEFAULT_ZOOM, help='Zoom factor for face alignment (default 0.8)')
+    p.add_argument('--zoom', type=float, default=DEFAULT_ZOOM, help='Zoom factor (default 0.8)')
+    p.add_argument('--vertical', type=float, default=DEFAULT_VERTICAL, help='Vertical position of face as fraction of image height (default 0.35)')
+    p.add_argument('--horizontal', type=float, default=DEFAULT_HORIZONTAL, help='Horizontal position of face as fraction of image width (default 0.35)')
     return p.parse_args()
 
 
@@ -164,4 +169,4 @@ if __name__ == '__main__':
         print("No images found in folder.")
         sys.exit(1)
     
-    make_video(images, out, width=args.width, height=args.height, fps=args.fps, duration=args.duration, zoom=args.zoom)
+    make_video(images, out, width=args.width, height=args.height, fps=args.fps, duration=args.duration, zoom=args.zoom, face_y=args.vertical, face_x=args.horizontal)
