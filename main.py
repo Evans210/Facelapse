@@ -17,7 +17,7 @@ DEFAULT_WIDTH = 1440
 DEFAULT_HEIGHT = 1920
 DEFAULT_FPS = 30
 DEFAULT_DURATION = 1
-ZOOM = 0.8
+DEFAULT_ZOOM = 0.8
 
 
 def sort_images(folder):
@@ -46,9 +46,10 @@ def sort_images(folder):
     return [f for _, f in entries]
 
 class FaceAligner:
-    def __init__(self, target_w, target_h, eye_distance=(0.35, 0.35)):
+    def __init__(self, target_w, target_h, zoom=0.8, eye_distance=(0.35, 0.35)):
         self.target_w = target_w
         self.target_h = target_h
+        self.zoom = zoom
         self.eye_distance = eye_distance
 
         # mediapipe setup
@@ -93,7 +94,7 @@ class FaceAligner:
         desired_right_x = (1 - self.eye_distance[0]) * self.target_w
         desired_dist = desired_right_x - desired_left_x
         current_dist = math.hypot(dx, dy)
-        scale = ZOOM * (desired_dist / current_dist)
+        scale = self.zoom * (desired_dist / current_dist)
         # center between eyes
         eyes_center = ((lx + rx) / 2.0, (ly + ry) / 2.0)
 
@@ -109,8 +110,8 @@ class FaceAligner:
         aligned = cv2.warpAffine(img, M, (self.target_w, self.target_h))
         return aligned
 
-def make_video(images, out_path, width, height, fps, duration):
-    aligner = FaceAligner(width, height)
+def make_video(images, out_path, width, height, fps, duration, zoom=0.8):
+    aligner = FaceAligner(width, height, zoom)
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     writer = cv2.VideoWriter(out_path, fourcc, fps, (width, height))
     total_frames = duration * len(images)
@@ -144,6 +145,7 @@ def parse_args():
     p.add_argument('--height', type=int, default=DEFAULT_HEIGHT, help='Output video height (default 1920)')
     p.add_argument('--fps', type=int, default=DEFAULT_FPS, help='Frames per second (default 30)')
     p.add_argument('--duration', type=int, default=DEFAULT_DURATION, help='The number of frames per image (default 1)')
+    p.add_argument('--zoom', type=float, default=DEFAULT_ZOOM, help='Zoom factor for face alignment (default 0.8)')
     return p.parse_args()
 
 
@@ -162,4 +164,4 @@ if __name__ == '__main__':
         print("No images found in folder.")
         sys.exit(1)
     
-    make_video(images, out, width=args.width, height=args.height, fps=args.fps, duration=args.duration)
+    make_video(images, out, width=args.width, height=args.height, fps=args.fps, duration=args.duration, zoom=args.zoom)
