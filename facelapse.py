@@ -1,6 +1,7 @@
 # Standard library imports
 import argparse
 import math
+import random
 import os
 import re
 import sys
@@ -23,7 +24,7 @@ DEFAULT_VERTICAL = 0.35
 DEFAULT_HORIZONTAL = 0.35
 
 
-def sort_images(folder):
+def sort_images(folder, randomize=False):
     images = []
     
     for file in os.listdir(folder):
@@ -31,6 +32,10 @@ def sort_images(folder):
             images.append(os.path.join(folder, file))
         else:
             print(f"Skipping file: {file}")
+    
+    if randomize:
+        random.shuffle(images)
+        return images
     
     entries = []
     
@@ -44,7 +49,6 @@ def sort_images(folder):
             except ValueError:
                 print(f"Error parsing date: {s}")
     
-    print(entries)
     entries.sort(key=lambda x: x[0])
     return [f for _, f in entries]
 
@@ -155,6 +159,7 @@ def parse_args():
     p.add_argument('--vertical', type=float, default=DEFAULT_VERTICAL, help='Vertical position of face as fraction of image height (default 0.35)')
     p.add_argument('--horizontal', type=float, default=DEFAULT_HORIZONTAL, help='Horizontal position of face as fraction of image width (default 0.35)')
     p.add_argument('--replicate-border', action='store_true', help='Use replicated edge pixels for out-of-bounds areas instead of black')
+    p.add_argument('--randomize', action='store_true', help='Randomize the order of images instead of sorting by date')
     return p.parse_args()
 
 
@@ -167,8 +172,11 @@ if __name__ == '__main__':
         print(f"Folder not found: {folder}")
         sys.exit(1)
         
-    print(f"Sorting images in {folder}")
-    images = sort_images(folder)
+    if args.randomize:
+        print(f"Randomizing images in {folder}")
+    else:
+        print(f"Sorting images in {folder}")
+    images = sort_images(folder, randomize=args.randomize)
     if len(images) == 0:
         print("No images found in folder.")
         sys.exit(1)
